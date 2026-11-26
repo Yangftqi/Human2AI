@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Optional release tag label (e.g. v0.5.1)'
+        description: 'Optional release tag label (e.g. v1.0.0)'
         required: false
         default: ''
 
@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 12
 
@@ -71,7 +71,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 12
 
@@ -85,13 +85,17 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - uses: android-actions/setup-android@v3
-
-      - name: Install Android NDK & Build-Tools
+      - name: Setup Android SDK & NDK (pre-installed runner SDK)
         run: |
+          SDK_DIR="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          echo "ANDROID_HOME=$SDK_DIR" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_DIR" >> "$GITHUB_ENV"
+          export PATH="$SDK_DIR/cmdline-tools/latest/bin:$SDK_DIR/platform-tools:$PATH"
+          echo "$SDK_DIR/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+          echo "$SDK_DIR/platform-tools" >> "$GITHUB_PATH"
           yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager "build-tools;36.0.0" "platforms;android-36" "ndk;28.2.13676358"
-          echo "NDK_HOME=$ANDROID_HOME/ndk/28.2.13676358" >> "$GITHUB_ENV"
+          sdkmanager "platform-tools" "build-tools;36.0.0" "platforms;android-36" "ndk;28.2.13676358"
+          echo "NDK_HOME=$SDK_DIR/ndk/28.2.13676358" >> "$GITHUB_ENV"
 
       - name: Install Rust Android target
         uses: dtolnay/rust-toolchain@stable
@@ -102,41 +106,26 @@ jobs:
         with:
           workspaces: './src-tauri -> target'
 
-      - name: Build frontend & copy Android assets
+      - name: Install dependencies & build Android APK via Tauri CLI
         run: |
           pnpm install --frozen-lockfile
-          pnpm build
-          rm -rf src-tauri/gen/android/app/src/main/assets
-          mkdir -p src-tauri/gen/android/app/src/main/assets
-          cp -r dist/* src-tauri/gen/android/app/src/main/assets/
+          sed -i 's/\r$//' src-tauri/gen/android/gradlew
+          chmod +x src-tauri/gen/android/gradlew
+          pnpm tauri android build --apk true --target aarch64
 
-      - name: Build Android Rust library (custom-protocol)
-        working-directory: src-tauri
-        env:
-          CC_aarch64_linux_android: ${{ env.ANDROID_HOME }}/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang
-          CXX_aarch64_linux_android: ${{ env.ANDROID_HOME }}/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang++
-          AR_aarch64_linux_android: ${{ env.ANDROID_HOME }}/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar
-          CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER: ${{ env.ANDROID_HOME }}/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang
-        run: |
-          cargo build --release --target aarch64-linux-android --features tauri/custom-protocol
-          mkdir -p gen/android/app/src/main/jniLibs/arm64-v8a
-          cp target/aarch64-linux-android/release/libhuman2ai_lib.so gen/android/app/src/main/jniLibs/arm64-v8a/
-
-      - name: Assemble & Sign APK
+      - name: Align & Sign APK
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_ALIAS: ${{ secrets.ANDROID_KEYSTORE_ALIAS }}
           ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
           ANDROID_KEY_PASS: ${{ secrets.ANDROID_KEY_PASS }}
         run: |
-          cd src-tauri/gen/android
-          sed -i 's/\r$//' gradlew
-          chmod +x gradlew
-          ./gradlew assembleArm64Release -x rustBuildArm64Release
-          cd ../../..
-
           VERSION=$(node -p "require('./package.json').version")
-          UNSIGNED=$(find src-tauri/gen/android/app/build/outputs/apk/arm64/release -name "*.apk" | head -n 1)
+          UNSIGNED=$(find src-tauri/gen/android/app/build/outputs/apk -name "*release*.apk" | head -n 1)
+          if [ -z "$UNSIGNED" ]; then
+            echo "::error::Could not locate built release APK"
+            exit 1
+          fi
           mkdir -p out-artifacts
           BUILD_TOOLS="$ANDROID_HOME/build-tools/36.0.0"
 
