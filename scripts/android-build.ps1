@@ -15,7 +15,13 @@ $env:GRADLE_USER_HOME = "$repoRoot\.cache\gradle"
 
 $ndkBin = "$env:NDK_HOME\toolchains\llvm\prebuilt\windows-x86_64\bin"
 $buildTools = "$env:ANDROID_HOME\build-tools\36.0.0"
-$env:Path = "$env:USERPROFILE\.rustup\toolchains\stable-x86_64-pc-windows-gnu\bin;$env:USERPROFILE\.cargo\bin;$env:JAVA_HOME\bin;$env:ANDROID_HOME\platform-tools;$ndkBin;$buildTools;$env:Path;C:\mingw64\bin"
+$gnuToolchain = "$env:USERPROFILE\.rustup\toolchains\stable-x86_64-pc-windows-gnu"
+if (Test-Path $gnuToolchain) {
+    $env:RUSTUP_TOOLCHAIN = "stable-x86_64-pc-windows-gnu"
+    $env:Path = "$gnuToolchain\bin;$env:USERPROFILE\.cargo\bin;$env:JAVA_HOME\bin;$env:ANDROID_HOME\platform-tools;$ndkBin;$buildTools;$env:Path;C:\mingw64\bin"
+} else {
+    $env:Path = "$env:USERPROFILE\.cargo\bin;$env:JAVA_HOME\bin;$env:ANDROID_HOME\platform-tools;$ndkBin;$buildTools;$env:Path"
+}
 
 # Forward HTTP/HTTPS proxy to JVM/Gradle if configured in environment
 $proxyUrl = if ($env:HTTPS_PROXY) { $env:HTTPS_PROXY } elseif ($env:HTTP_PROXY) { $env:HTTP_PROXY } else { $null }

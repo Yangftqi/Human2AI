@@ -7,7 +7,11 @@ $repoRoot = (Resolve-Path "$PSScriptRoot\..").Path
 $tempTarget = if ($UseTempTarget) { "$env:LOCALAPPDATA\h2ai-rel-win-tmp" } else { $null }
 $env:CARGO_TARGET_DIR = if ($UseTempTarget) { $tempTarget } else { "$repoRoot\src-tauri\target" }
 $env:CARGO_HOME = "$repoRoot\.cache\cargo"
-$env:Path = "$env:USERPROFILE\.rustup\toolchains\stable-x86_64-pc-windows-gnu\bin;$env:USERPROFILE\.cargo\bin;$env:Path;C:\mingw64\bin"
+$gnuToolchain = "$env:USERPROFILE\.rustup\toolchains\stable-x86_64-pc-windows-gnu"
+if (Test-Path $gnuToolchain) {
+    $env:RUSTUP_TOOLCHAIN = "stable-x86_64-pc-windows-gnu"
+    $env:Path = "$gnuToolchain\bin;$env:USERPROFILE\.cargo\bin;$env:Path;C:\mingw64\bin"
+}
 
 try {
     pnpm tauri build --no-bundle

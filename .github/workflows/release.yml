@@ -23,7 +23,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: 12
 
       - uses: actions/setup-node@v4
         with:
@@ -73,7 +73,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: 12
 
       - uses: actions/setup-node@v4
         with:
@@ -89,6 +89,7 @@ jobs:
 
       - name: Install Android NDK & Build-Tools
         run: |
+          yes | sdkmanager --licenses > /dev/null || true
           sdkmanager "build-tools;36.0.0" "platforms;android-36" "ndk;28.2.13676358"
           echo "NDK_HOME=$ANDROID_HOME/ndk/28.2.13676358" >> "$GITHUB_ENV"
 
@@ -129,6 +130,7 @@ jobs:
           ANDROID_KEY_PASS: ${{ secrets.ANDROID_KEY_PASS }}
         run: |
           cd src-tauri/gen/android
+          sed -i 's/\r$//' gradlew
           chmod +x gradlew
           ./gradlew assembleArm64Release -x rustBuildArm64Release
           cd ../../..
