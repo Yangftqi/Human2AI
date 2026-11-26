@@ -111,7 +111,7 @@ jobs:
           pnpm install --frozen-lockfile
           sed -i 's/\r$//' src-tauri/gen/android/gradlew
           chmod +x src-tauri/gen/android/gradlew
-          pnpm tauri android build --apk true --target aarch64
+          pnpm tauri android build --apk --target aarch64 --ci
 
       - name: Align & Sign APK
         env:
