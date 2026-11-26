@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Human2AI</string>
+    <string name="main_activity_title">Human2AI</string>
+    <string name="process_text_label">Human2AI 嘴替</string>
+    <string name="qs_tile_label">Human2AI 嘴替</string>
+    <string name="accessibility_service_label">Human2AI 悬浮嘴替助手</string>
+    <string name="accessibility_service_description">仅在你主动点击悬浮球或抓屏选句时，读取当前聊天输入框或选中的气泡文本并一键写回转译结果；自动跳过所有密码输入框，平时不读取、不上传任何内容。</string>
+</resources>

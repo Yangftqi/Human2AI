@@ -1,0 +1,186 @@
+name: Release Dual-Platform Artifacts
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Optional release tag label (e.g. v0.5.1)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Windows x64 Portable
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install dependencies & test
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm test -- --run
+
+      - name: Build Tauri Windows binary
+        run: pnpm tauri build --no-bundle
+
+      - name: Package portable zip
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $stage = "release-win-stage"
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item "src-tauri/target/release/human2ai.exe" $stage
+          $wv2 = Get-ChildItem "src-tauri/target/release/build" -Recurse -Filter "WebView2Loader.dll" -ErrorAction SilentlyContinue | Where-Object { $_.FullName -match 'x64' } | Select-Object -First 1
+          if ($wv2) { Copy-Item $wv2.FullName $stage }
+          foreach ($f in @("LICENSE", "LICENSE-ASSETS", "PRIVACY.md", "README.md")) {
+            if (Test-Path $f) { Copy-Item $f $stage }
+          }
+          New-Item -ItemType Directory -Force -Path "out-artifacts" | Out-Null
+          Compress-Archive -Path "$stage/*" -DestinationPath "out-artifacts/Human2AI-v$version-windows-x64-portable.zip" -Force
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-portable
+          path: out-artifacts/*.zip
+
+  build-android:
+    name: Android arm64 APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install Android NDK & Build-Tools
+        run: |
+          sdkmanager "build-tools;36.0.0" "platforms;android-36" "ndk;28.2.13676358"
+          echo "NDK_HOME=$ANDROID_HOME/ndk/28.2.13676358" >> "$GITHUB_ENV"
+
+      - name: Install Rust Android target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Build frontend & copy Android assets
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+          rm -rf src-tauri/gen/android/app/src/main/assets
+          mkdir -p src-tauri/gen/android/app/src/main/assets
+          cp -r dist/* src-tauri/gen/android/app/src/main/assets/
+
+      - name: Build Android Rust library (custom-protocol)
+        working-directory: src-tauri
+        env:
+          CC_aarch64_linux_android: ${{ env.ANDROID_HOME }}/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang
+          CXX_aarch64_linux_android: ${{ env.ANDROID_HOME }}/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang++
+          AR_aarch64_linux_android: ${{ env.ANDROID_HOME }}/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar
+          CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER: ${{ env.ANDROID_HOME }}/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang
+        run: |
+          cargo build --release --target aarch64-linux-android --features tauri/custom-protocol
+          mkdir -p gen/android/app/src/main/jniLibs/arm64-v8a
+          cp target/aarch64-linux-android/release/libhuman2ai_lib.so gen/android/app/src/main/jniLibs/arm64-v8a/
+
+      - name: Assemble & Sign APK
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_ALIAS: ${{ secrets.ANDROID_KEYSTORE_ALIAS }}
+          ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+          ANDROID_KEY_PASS: ${{ secrets.ANDROID_KEY_PASS }}
+        run: |
+          cd src-tauri/gen/android
+          chmod +x gradlew
+          ./gradlew assembleArm64Release -x rustBuildArm64Release
+          cd ../../..
+
+          VERSION=$(node -p "require('./package.json').version")
+          UNSIGNED=$(find src-tauri/gen/android/app/build/outputs/apk/arm64/release -name "*.apk" | head -n 1)
+          mkdir -p out-artifacts
+          BUILD_TOOLS="$ANDROID_HOME/build-tools/36.0.0"
+
+          "$BUILD_TOOLS/zipalign" -f -p 4 "$UNSIGNED" out-artifacts/aligned.apk
+
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ] && [ -n "$ANDROID_KEYSTORE_PASS" ]; then
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > release-keystore.jks
+            ALIAS="${ANDROID_KEYSTORE_ALIAS:-human2ai}"
+            KEY_PASS="${ANDROID_KEY_PASS:-$ANDROID_KEYSTORE_PASS}"
+            "$BUILD_TOOLS/apksigner" sign \
+              --ks release-keystore.jks \
+              --ks-key-alias "$ALIAS" \
+              --ks-pass "pass:$ANDROID_KEYSTORE_PASS" \
+              --key-pass "pass:$KEY_PASS" \
+              --out "out-artifacts/Human2AI-v${VERSION}-android-arm64.apk" \
+              out-artifacts/aligned.apk
+            "$BUILD_TOOLS/apksigner" verify --print-certs "out-artifacts/Human2AI-v${VERSION}-android-arm64.apk"
+            rm -f release-keystore.jks out-artifacts/aligned.apk out-artifacts/*.idsig
+          else
+            echo "::warning::ANDROID_KEYSTORE_BASE64 secret not set; uploading unsigned APK."
+            mv out-artifacts/aligned.apk "out-artifacts/Human2AI-v${VERSION}-android-arm64-unsigned.apk"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: out-artifacts/*.apk
+
+  publish-release:
+    name: Create Draft GitHub Release
+    needs: [build-windows, build-android]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Generate SHA256SUMS.txt
+        working-directory: release-assets
+        run: sha256sum * > SHA256SUMS.txt
+
+      - name: Create Draft GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+          files: release-assets/*

@@ -1,0 +1,1 @@
+{"default":{"identifier":"default","description":"Capability for main studio and popup windows","local":true,"windows":["main","popup"],"permissions":["core:default","core:window:default","core:window:allow-start-dragging","core:window:allow-hide","core:window:allow-show","core:window:allow-set-focus"]}}

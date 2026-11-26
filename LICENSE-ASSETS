@@ -1,0 +1,72 @@
+# Built-in Character Artwork & Fan Persona Assets License (CC BY-NC-SA 4.0)
+
+## 1. Scope of This License
+
+This license governs all built-in character artwork, avatars, full-body
+backgrounds, and derivative fan-persona sheets bundled with **Human2AI**,
+including but not limited to:
+
+- `src/presets/personaArtAssets.ts`
+- Character persona lore and prompt drafts in `prompts/`
+- Any exported built-in `.png` persona cards or `.h2ai` skin packages derived
+  from the built-in AI-girl characters
+
+> Software source code outside the assets above is licensed separately under
+> the MIT License (see `LICENSE`).
+
+---
+
+## 2. License Terms: CC BY-NC-SA 4.0
+
+All covered assets are licensed under the **Creative Commons
+Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0)**.
+
+Full legal text:
+https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode
+
+Under this license you are free to **Share** and **Adapt** the assets ONLY if
+you comply with all three conditions:
+
+1. **Attribution (BY)** — You must give appropriate credit to the original
+   designers and derivative contributors listed in Section 3, provide a link to
+   the license, and indicate if changes were made.
+2. **NonCommercial (NC)** — You may **NOT** use these character designs,
+   avatars, or illustrations for any commercial purpose, including selling
+   merchandise (badges, plushies, acrylic stands, apparel), paid apps/services,
+   commercial advertisements, or monetized redistribution.
+3. **ShareAlike (SA)** — If you remix, transform, or build upon these assets,
+   you must distribute your contributions under the same **CC BY-NC-SA 4.0**
+   license.
+
+---
+
+## 3. Attribution & Original Design Credits
+
+The built-in AI-girl visual assets in Human2AI are non-commercial fan
+redesigns/illustrations paying tribute to the Chinese AI community's anthropomorphized
+AI-girl lore:
+
+- **Primary Character Canon & Maid/AI-Girl Visual Designs**:
+  **[ZipZipPipe](https://space.bilibili.com/4168597)** (Bilibili: `https://space.bilibili.com/4168597`) — *《大AI和小AI们》* series (DeepSeek 鲸鱼娘/大肥鱼,
+  Gemini, GPT, Claude 圣女/大小姐, Grok, and community AI-girl designs).
+- **Early Origin Reference (DeepSeek 鲸鱼娘 prototype)**:
+  **[上善无形](https://space.bilibili.com/4456176)** (Bilibili: `https://space.bilibili.com/4456176`) — original character 「溟月」 referenced in the community's early
+  DeepSeek whale-girl lineage.
+- **Derivative Flat-Color / Chibi Redraws in Human2AI**:
+  Redrawn specifically for Human2AI's obsidian UI (`src/presets/personaArtAssets.ts`),
+  released strictly for non-commercial open-source entertainment under
+  CC BY-NC-SA 4.0.
+
+> If you are a rights holder or original creator and have any questions,
+> attribution updates, or removal requests regarding any visual asset in this
+> repository, please open a GitHub Issue or contact the maintainer — we will
+> respond and comply promptly.
+
+---
+
+## 4. Non-Official Fan-Work Disclaimer
+
+Human2AI and its built-in AI-girl characters are **independent, non-commercial
+community fan works**. They are **NOT** official mascots, logos, products, or
+endorsements of **DeepSeek**, **OpenAI**, **Anthropic**, **Google**, or **xAI**.
+All model names and trademarks belong to their respective owners.

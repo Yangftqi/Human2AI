@@ -1,0 +1,37 @@
+# Node & Vite
+node_modules/
+dist/
+.vite/
+
+# Tauri & Rust
+src-tauri/target/
+src-tauri/WixTools/
+
+# Local relocated caches, exported artifacts & internal dev docs
+.cache/
+artifacts/
+release/
+docs/PROJECT_HANDOFF.md
+docs/RELEASE_GUIDE.md
+docs/ARCHITECTURE.md
+
+# Android generated artifacts
+src-tauri/gen/android/.gradle/
+src-tauri/gen/android/build/
+src-tauri/gen/android/app/build/
+src-tauri/gen/android/local.properties
+src-tauri/gen/android/app/src/main/assets/
+src-tauri/gen/android/app/src/main/jniLibs/
+src-tauri/gen/android/app/tauri.build.gradle.kts
+*.apk
+*.jks
+*.keystore
+*.p12
+signing.local.json
+
+# Logs & OS files
+*.log
+npm-debug.log*
+pnpm-debug.log*
+.DS_Store
+Thumbs.db
